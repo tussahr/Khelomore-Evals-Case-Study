@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="AI PM case study: evaluating KheloMore's venue booking assistant, from 6/49 critical failures to zero.">
+<style>html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Venue Assistant Eval</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single reading column (~70ch) with wide breakout rows for the scoreline, tables and charts.
+   Visual idea: a match report. Court-line rules, a scoreboard for the headline result. */
+:root {
+  --bg: #f4f6f2;          /* chalked court white, slightly green */
+  --panel: #ffffff;
+  --ink: #18211c;
+  --muted: #5d6a62;
+  --line: #d7ded6;
+  --court: #1d6b47;       /* accent: synthetic court green */
+  --court-soft: #e3efe8;
+  --shuttle: #b97a12;     /* secondary: amber, used for "estimate" and caution */
+  --fail: #b8432f;
+  --pass: #1d6b47;
+  --bar: #9fb7a8;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "Public Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111814; --panel: #18211c; --ink: #e6ece7; --muted: #9db0a4; --line: #2c3a32;
+    --court: #5fbf8d; --court-soft: #1d2c24; --shuttle: #e0a640; --fail: #f07a63; --pass: #5fbf8d; --bar: #4f6b5b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111814; --panel: #18211c; --ink: #e6ece7; --muted: #9db0a4; --line: #2c3a32;
+  --court: #5fbf8d; --court-soft: #1d2c24; --shuttle: #e0a640; --fail: #f07a63; --pass: #5fbf8d; --bar: #4f6b5b;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.65 var(--body); margin: 0; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 48px 72px; }
+.col { max-width: 70ch; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: 0.01em; text-wrap: balance; line-height: 1.05; margin: 0; }
+h1 { font-size: clamp(2.6rem, 6vw, 4.2rem); text-transform: uppercase; }
+h2 { font-size: clamp(1.7rem, 3.4vw, 2.3rem); text-transform: uppercase; }
+h3 { font-size: 1.3rem; }
+p { margin: 0; }
+.eyebrow { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lede { font-size: 1.15rem; color: var(--ink); }
+.muted { color: var(--muted); }
+section { display: grid; gap: 18px; padding-block: 44px; border-top: 2px solid var(--line); }
+section > .head { display: grid; gap: 6px; }
+.stack { display: grid; gap: 14px; }
+a { color: var(--court); }
+strong { font-weight: 700; }
+code, .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* Header */
+header { display: grid; gap: 22px; padding-block-end: 36px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font-family: var(--mono); font-size: 0.82rem; color: var(--muted); }
+
+/* Scoreboard */
+.scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; background: var(--panel); border: 2px solid var(--ink); border-radius: 6px; overflow: hidden; }
+.side { padding: 20px 22px; display: grid; gap: 4px; align-content: center; min-width: 0; }
+.side .label { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.side .score { font-family: var(--display); font-weight: 700; font-size: clamp(3rem, 9vw, 5.2rem); line-height: 1; font-variant-numeric: tabular-nums; }
+.side .sub { font-size: 0.92rem; color: var(--muted); }
+.side.before .score { color: var(--fail); }
+.side.after .score { color: var(--pass); }
+.vs { display: grid; place-items: center; padding: 0 14px; background: var(--ink); color: var(--bg); font-family: var(--display); font-weight: 700; font-size: 1.4rem; letter-spacing: 0.06em; }
+.scorenote { font-size: 0.9rem; color: var(--muted); }
+
+/* Stat strip */
+.strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-block: 1px solid var(--line); }
+.strip > div { padding: 14px 14px 14px 0; display: grid; gap: 2px; min-width: 0; }
+.strip > div + div { padding-left: 14px; border-left: 1px solid var(--line); }
+.strip .v { font-family: var(--display); font-weight: 600; font-size: 1.9rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.strip .k { font-size: 0.86rem; color: var(--muted); }
+
+/* Timeline (a real sequence, so numbered) */
+.timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.timeline li { display: grid; grid-template-columns: 4.2rem minmax(0, 1fr); gap: 14px; padding-block: 12px; border-bottom: 1px dashed var(--line); }
+.timeline .m { font-family: var(--mono); font-size: 0.85rem; color: var(--court); font-weight: 500; padding-top: 2px; }
+.timeline b { font-weight: 700; }
+
+/* Tables */
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 0.93rem; min-width: 560px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 500; background: var(--court-soft); }
+td.n, th.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+tr.final td { background: var(--court-soft); font-weight: 600; }
+.pill { display: inline-block; font-family: var(--mono); font-size: 0.72rem; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.pill.bad { color: var(--fail); } .pill.good { color: var(--pass); } .pill.est { color: var(--shuttle); }
+
+/* Failure-mode bars */
+.modes { display: grid; gap: 10px; }
+.mode { display: grid; grid-template-columns: minmax(0, 15rem) minmax(0, 1fr) 2.4rem; gap: 12px; align-items: center; }
+.mode .name { font-size: 0.92rem; }
+.mode .track { height: 14px; background: var(--court-soft); border-radius: 2px; overflow: hidden; }
+.mode .fill { height: 100%; background: var(--court); }
+.mode .fill.know { background: var(--shuttle); }
+.mode .c { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.85rem; color: var(--muted); }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 6px; }
+
+/* Chart */
+.chart { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px 12px 8px; overflow-x: auto; }
+.chart svg { display: block; width: 100%; min-width: 520px; height: auto; }
+.chart text { fill: var(--muted); font-family: var(--mono); font-size: 12px; }
+.chart .val { fill: var(--ink); font-weight: 500; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .b { fill: var(--bar); }
+.chart .b.hi { fill: var(--court); }
+.chart .b.worse { fill: var(--fail); }
+
+/* Two-column cards */
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.card h3 { color: var(--court); }
+.card.k h3 { color: var(--shuttle); }
+ul.tight { margin: 0; padding-left: 1.1rem; display: grid; gap: 6px; }
+blockquote { margin: 0; padding: 12px 16px; border-left: 3px solid var(--fail); background: var(--panel); font-size: 0.95rem; }
+blockquote .who { display: block; font-family: var(--mono); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 4px; }
+.callout { border: 1px solid var(--line); border-left: 4px solid var(--shuttle); background: var(--panel); padding: 14px 16px; border-radius: 4px; font-size: 0.95rem; }
+footer { padding-top: 28px; border-top: 2px solid var(--line); font-size: 0.85rem; color: var(--muted); display: grid; gap: 6px; }
+
+@media (max-width: 760px) {
+  .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .strip > div:nth-child(3) { padding-left: 0; border-left: 0; }
+  .strip > div:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .two { grid-template-columns: minmax(0, 1fr); }
+  .mode { grid-template-columns: minmax(0, 1fr) 2.4rem; }
+  .mode .track { grid-column: 1 / -1; grid-row: 2; }
+}
+@media (max-width: 480px) {
+  .scoreboard { grid-template-columns: minmax(0, 1fr); }
+  .vs { padding: 6px; font-size: 1rem; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">KheloMore · AI product management · evaluation case study</span>
+    <h1>Venue Assistant Eval</h1>
+    <p class="lede col">I built an AI assistant that answers booking questions on KheloMore venue pages, then built the evaluation that decided whether it was ready for a launch trial. The eval cut critical failures in my review from 6 of 49 test conversations to zero, showed that some failures came from the source data rather than the model, and changed which model we chose.</p>
+    <div class="meta"><span>Platform: KheloMore, an Indian sports-venue booking platform with 2,000+ venues</span><span>Role: product owner and domain reviewer</span><span>Models: Claude Haiku 4.5, Claude Sonnet 5.5, Claude Opus 5.5 (judge)</span><span>Status: pre-launch</span></div>
+
+    <div class="scoreboard" role="group" aria-label="Critical failures before and after">
+      <div class="side before"><span class="label">v1 · first version</span><span class="score">6<span class="muted" style="font-size:.45em"> / 49</span></span><span class="sub">conversations with a critical failure</span></div>
+      <div class="vs" aria-hidden="true">→</div>
+      <div class="side after"><span class="label">v2.1 · after the eval</span><span class="score">0<span class="muted" style="font-size:.45em"> / 49</span></span><span class="sub">same 49 scenarios, same reviewer</span></div>
+    </div>
+    <p class="scorenote col">Critical means a reply would likely make a customer take a wrong action or lose money or a booking. In v1, 28 of 49 conversations had at least one issue; 6 of those were critical. The final version (v2.2, with an enforced length limit) passed a spot-check of 11 conversations with zero critical failures. One reviewer did all of this, so treat the zero as "zero that I caught" (see <a href="#trust">How far to trust these numbers</a>).</p>
+
+    <div class="strip">
+      <div><span class="v num">38% → 11%</span><span class="k">replies with an unsupported claim (AI judge, v1 → final)</span></div>
+      <div><span class="v num">49 × 3.9</span><span class="k">test conversations × average user turns (~190 replies per run)</span></div>
+      <div><span class="v num">$0.014</span><span class="k">measured cost per conversation (final)</span></div>
+      <div><span class="v num">~$35</span><span class="k">total API spend for the whole project</span></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="head"><span class="eyebrow">The problem</span><h2>Booking doubts lose bookings</h2></div>
+    <div class="col stack">
+      <p>Users land on a venue page to book a slot and hesitate: what's the cancellation policy, will I get a refund, can I reschedule, is there parking? The answers exist, but they're buried in long terms that differ venue to venue. In my five-venue sample, full-refund cancellation windows ranged from 2 hours to 48 hours, two venues didn't allow rescheduling at all, and one had a separate refund rule for badminton.</p>
+      <p>The proposed fix was an "Ask about this venue" button that opens an assistant with five suggested questions and a free chat. The risk was clear from day one. <strong>An assistant that confidently states the wrong refund rule is worse than no assistant.</strong> So the project's real deliverable was the evaluation, not the bot.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><span class="eyebrow">Method</span><h2>From requirements to a launch decision</h2></div>
+    <ol class="timeline col">
+      <li><span class="m">M0</span><span><b>Requirements.</b> A PRD with 19 behaviour rules (never invent policies, never share venue phone numbers, never push users off the app), scope, and a decision log updated as evidence came in.</span></li>
+      <li><span class="m">M1</span><span><b>Assistant v1.</b> One prompt, grounded only in the venue's page data. No retrieval system: the venue is known from the page and its data fits in the prompt, so RAG would only add a failure point.</span></li>
+      <li><span class="m">M2</span><span><b>Test set.</b> 49 scenarios built from three dimensions: topic × what the data says (answered, missing, sport-specific, out of scope) × user style (vague, pushy, wrong assumption). 22 hand-written, 27 generated and filtered. Four generated ones contradicted my own rules and were fixed.</span></li>
+      <li><span class="m">M3</span><span><b>Multi-turn runs.</b> A second model plays the user for up to 4 turns (3.9 on average; almost every conversation used all 4), so follow-up and consistency failures show up.</span></li>
+      <li><span class="m">M4</span><span><b>Error analysis.</b> I read every conversation in a custom review app, highlighted problems in my own words, and marked each one pass or fail. Notes were grouped into named failure modes; background agents scanned all 49 for more instances, which I accepted or dismissed.</span></li>
+      <li><span class="m">M5</span><span><b>Automated evals.</b> Five code checks for objective rules and one AI judge for the most common judgement call, validated against my labels before trusting it.</span></li>
+      <li><span class="m">M6</span><span><b>Fixes.</b> Knowledge gaps fixed with a platform policy document; behaviour gaps fixed in the prompt; model chosen by measurement.</span></li>
+      <li><span class="m">M7</span><span><b>Re-run and re-review.</b> Same 49 scenarios, same reviewer, same pass/fail standard.</span></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="head"><span class="eyebrow">What the review found</span><h2>The biggest gap was knowledge, not behaviour</h2></div>
+    <p class="col">Conversations affected by each failure mode in v1, from my review of all 49. These count every issue I confirmed, not only critical ones, and one conversation can show several modes. In total 28 of 49 conversations had at least one issue; 6 of those were critical.</p>
+    <div class="modes" role="list">
+      <div class="mode" role="listitem"><span class="name">Missing platform knowledge</span><span class="track"><span class="fill know" style="width:100%; display:block"></span></span><span class="c">14</span></div>
+      <div class="mode" role="listitem"><span class="name">Misstates or invents venue facts</span><span class="track"><span class="fill" style="width:57%; display:block"></span></span><span class="c">8</span></div>
+      <div class="mode" role="listitem"><span class="name">Invents processes or support promises</span><span class="track"><span class="fill" style="width:57%; display:block"></span></span><span class="c">8</span></div>
+      <div class="mode" role="listitem"><span class="name">Over-hedges when the data is clear</span><span class="track"><span class="fill" style="width:43%; display:block"></span></span><span class="c">6</span></div>
+      <div class="mode" role="listitem"><span class="name">Assumes the sport, wrong refund rule</span><span class="track"><span class="fill" style="width:7%; display:block"></span></span><span class="c">1</span></div>
+      <div class="mode" role="listitem"><span class="name">Pushes the user to book off-platform</span><span class="track"><span class="fill" style="width:7%; display:block"></span></span><span class="c">1</span></div>
+    </div>
+    <div class="legend"><span><span class="sw" style="background:var(--shuttle)"></span>Knowledge gap: the facts were never given</span><span><span class="sw" style="background:var(--court)"></span>Behaviour gap: the prompt or model got it wrong</span></div>
+    <div class="two">
+      <div class="card k"><h3>Knowledge gaps → write it down</h3><p>Users asked about refund timing, fees, injury cover and support response times. No venue page answers these, and no prompt wording can produce facts the model was never given. I wrote a one-page KheloMore platform policy from our published terms and FAQ, confirmed the gaps with the team, and added it to the assistant's context.</p></div>
+      <div class="card"><h3>Behaviour gaps → change the instructions</h3><p>Ask which sport before quoting a sport-specific rule. Never describe how support or the app works beyond the policy. Answer confidently when the data is clear. Speak as "we". Keep users on the platform. Each rule traces to a note from the review.</p></div>
+    </div>
+    <div class="callout col"><strong>The eval also found data problems.</strong> The venue data export was missing every rescheduling policy, so the assistant said "not available" for answers the real venue page had. And what looked like contradictory refund rules at one venue turned out to be a badminton-only rule. Both were fixed at the source, not in the prompt.</div>
+  </section>
+
+  <section>
+    <div class="head"><span class="eyebrow">Results</span><h2>Same 49 scenarios, five versions</h2></div>
+    <div class="chart" role="img" aria-label="Share of replies with an unsupported claim, by version: v1 38%, v2 Haiku 49%, v2 Sonnet 21%, v2.1 Sonnet 13%, v2.2 Sonnet 11%">
+      <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg">
+        <text x="0" y="14">Replies with an unsupported claim (AI judge)</text>
+        <line class="grid" x1="40" y1="210" x2="630" y2="210"/>
+        <line class="grid" x1="40" y1="164" x2="630" y2="164"/>
+        <line class="grid" x1="40" y1="118" x2="630" y2="118"/>
+        <line class="grid" x1="40" y1="72" x2="630" y2="72"/>
+        <text x="32" y="214" text-anchor="end">0%</text>
+        <text x="32" y="168" text-anchor="end">15%</text>
+        <text x="32" y="122" text-anchor="end">30%</text>
+        <text x="32" y="76" text-anchor="end">45%</text>
+        <!-- scale: 0% at y=210, each 1% = 3.0667px -->
+        <rect class="b" x="70" y="93.5" width="72" height="116.5"/>
+        <text class="val" x="106" y="87" text-anchor="middle">38%</text>
+        <text x="106" y="230" text-anchor="middle">v1 Haiku</text>
+        <rect class="b worse" x="185" y="59.7" width="72" height="150.3"/>
+        <text class="val" x="221" y="53" text-anchor="middle">49%</text>
+        <text x="221" y="230" text-anchor="middle">v2 Haiku</text>
+        <rect class="b" x="300" y="145.6" width="72" height="64.4"/>
+        <text class="val" x="336" y="139" text-anchor="middle">21%</text>
+        <text x="336" y="230" text-anchor="middle">v2 Sonnet</text>
+        <rect class="b hi" x="415" y="170.1" width="72" height="39.9"/>
+        <text class="val" x="451" y="164" text-anchor="middle">13%</text>
+        <text x="451" y="230" text-anchor="middle">v2.1 Sonnet</text>
+        <rect class="b hi" x="530" y="176.3" width="72" height="33.7"/>
+        <text class="val" x="566" y="170" text-anchor="middle">11%</text>
+        <text x="566" y="230" text-anchor="middle">v2.2 Sonnet</text>
+      </svg>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Version</th><th class="n">Critical failures (human)</th><th class="n">Unsupported claims (judge)</th><th class="n">Over 120 words</th><th class="n">Avg words</th><th class="n">Cost / conversation</th></tr></thead>
+        <tbody>
+          <tr><td>v1 · Haiku 4.5</td><td class="n">6 / 49</td><td class="n">38%</td><td class="n">0%</td><td class="n">71</td><td class="n">$0.0070</td></tr>
+          <tr><td>v2 · Haiku 4.5</td><td class="n">not reviewed</td><td class="n">49% <span class="pill bad">worse</span></td><td class="n">15%</td><td class="n">91</td><td class="n">$0.0080</td></tr>
+          <tr><td>v2 · Sonnet 5.5</td><td class="n">not reviewed</td><td class="n">21%</td><td class="n">39%</td><td class="n">114</td><td class="n">$0.0161</td></tr>
+          <tr><td>v2.1 · Sonnet 5.5</td><td class="n">0 / 49</td><td class="n">13%</td><td class="n">16%</td><td class="n">98</td><td class="n">$0.0155</td></tr>
+          <tr class="final"><td>v2.2 · Sonnet 5.5 (chosen)</td><td class="n">0 / 11 spot-check</td><td class="n">11%</td><td class="n">0% <span class="pill good">enforced</span></td><td class="n">79</td><td class="n">$0.0143</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout col"><strong>Unsupported isn't the same as critical.</strong> The judge flags any claim the assistant wasn't given, however small. In v2.1, for example, it flagged "Venues set these windows so they have a chance to rebook the slot". That's invented, but it changes nothing for the customer. Critical failures are the subset that would mislead a booking decision, which is why 13% unsupported and 0 critical can both be true.</div>
+    <p class="col muted">Code checks across every version: no venue phone numbers or sensitive data repeated; one wrong support link in v1, none after.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="eyebrow">The model decision</span><h2>The cheaper model wasn't the cheaper choice</h2></div>
+    <div class="col stack">
+      <p>Haiku was v1's model, and per conversation it cost about half as much as Sonnet (measured on the same 49 scenarios: $0.008 vs $0.016 in v2). Given the richer platform policy and told to speak for the company, it got worse: it started promising things on KheloMore's behalf and made a critical arithmetic error.</p>
+    </div>
+    <blockquote class="col"><span class="who">Haiku v2, reschedule question</span>"If your slot is tomorrow at 6 PM, you can reschedule anytime up to 12 PM tomorrow." The venue's window is 18 hours, so the cutoff is midnight tonight. A customer following this would miss it.</blockquote>
+    <div class="col stack">
+      <p>Sonnet stayed grounded, so we chose it. Prompt caching made its 2,400-token policy context nearly free to re-read, which moved the cost question to reply length and the number of model calls. Enforcing the 120-word limit (a stricter instruction, plus an automatic rewrite if a reply still runs long) cut cost per conversation by 8% and removed every over-long reply.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Cost lever</th><th>Status</th><th class="n">Monthly at 400 conversations/day</th></tr></thead>
+        <tbody>
+          <tr><td>Sonnet 5.5, v2.2, prompt caching (94% of input read from cache)</td><td><span class="pill good">measured</span></td><td class="n">~$170</td></tr>
+          <tr><td>+ store answers to the 5 suggested questions per venue, refreshed when the venue changes</td><td><span class="pill est">estimate</span></td><td class="n">~$85–100</td></tr>
+          <tr><td>+ show cancellation and reschedule windows on the venue page</td><td><span class="pill est">to measure</span></td><td class="n">lower</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="col stack">
+      <p><strong>400 conversations a day is a planning assumption, not measured traffic.</strong> The real number is daily venue-page visits × the share of visitors who open the assistant, and neither is known until launch. Cost scales linearly with it, so here is the range at the measured $0.0143 per conversation:</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Conversations per day</th><th class="n">100</th><th class="n">400</th><th class="n">1,000</th><th class="n">2,000</th></tr></thead>
+        <tbody>
+          <tr><td>Monthly, measured cost per conversation</td><td class="n">~$43</td><td class="n">~$170</td><td class="n">~$430</td><td class="n">~$860</td></tr>
+          <tr><td>Monthly, with stored suggested answers (estimate)</td><td class="n">~$25</td><td class="n">~$85–100</td><td class="n">~$215–250</td><td class="n">~$430–500</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="trust">
+    <div class="head"><span class="eyebrow">Trust</span><h2>How far to trust these numbers</h2></div>
+    <div class="two">
+      <div class="card"><h3>What's solid</h3><ul class="tight">
+        <li>Critical-failure counts come from a domain expert reading every conversation, with one written standard.</li>
+        <li>Code checks are exact. Each was unit-tested, and three bugs found in them were fixed before reporting.</li>
+        <li>Every version ran on identical scenarios.</li>
+      </ul></div>
+      <div class="card k"><h3>What's directional</h3><ul class="tight">
+        <li><strong>Judge agreement.</strong> I measured two rates against my reply-level labels. True positive rate (TPR): of replies I marked as fine, the share the judge also passed. True negative rate (TNR): of replies I marked as containing an unsupported claim, the share the judge caught. Development set: TPR 91%, TNR 100%. Held-out test set: TPR 72%, TNR 80%. I didn't re-label the test set after seeing the judge's answers, so that gap stays in the record.</li>
+        <li><strong>My review probably undercounts.</strong> Most of the judge's test-set disagreements were invented claims my own labels had missed. The same reviewer produced the 0/49, so it means zero critical failures I caught. As a cross-check, I re-read the one v2.1 judge flag that looked potentially critical (suggesting a large group book more than one slot at a venue with a 4-player limit). It's the correct answer for that venue, so the count stays at zero.</li>
+        <li>49 scenarios across 5 venues finds failure modes; it doesn't give precise rates.</li>
+        <li>One reviewer. A second annotator would let us measure agreement.</li>
+        <li>One test venue with contradictory terms is synthetic, built to test a rule no real venue exercised.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><span class="eyebrow">After launch</span><h2>How success will be measured</h2></div>
+    <div class="col stack">
+      <p>The eval answers "is it safe to try?". Whether it's worth keeping is a business question, answered by an A/B test: show the assistant on a random half of venue-page sessions, hide it on the other half, run for 2–4 weeks, and compare.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Metric</th><th>Hypothesis</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td>Booking conversion of venue-page sessions</td><td>Higher with the assistant shown. Target set from the current baseline; for example, a 5% relative lift</td><td><span class="pill good">primary</span></td></tr>
+          <tr><td>Support tickets about booking policy (cancellation, refund, reschedule)</td><td>Fewer per 1,000 bookings</td><td><span class="pill good">secondary</span></td></tr>
+          <tr><td>Venue-page drop-off without a booking</td><td>Lower for sessions that open the assistant</td><td><span class="pill good">secondary</span></td></tr>
+          <tr><td>Thumbs-down rate; weekly human review of sampled chats using this eval</td><td>No critical failures; thumbs-down under an agreed threshold</td><td><span class="pill bad">guardrail</span></td></tr>
+          <tr><td>Cost per conversation and response time</td><td>Within the modelled range above</td><td><span class="pill bad">guardrail</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="col"><strong>Decision rule:</strong> expand if conversion holds or improves and every guardrail holds; switch off (one flag) if any guardrail breaks.</p>
+  </section>
+
+  <section>
+    <div class="head"><span class="eyebrow">Next</span><h2>Before launch</h2></div>
+    <ul class="tight col">
+      <li>Store answers to the five suggested questions per venue; a tap costs nothing and every user sees the same checked answer.</li>
+      <li>Re-run this eval on any prompt, model or policy change, as a release gate.</li>
+      <li>Grow the labelled set from real conversations and add a judge for the next most common failure mode.</li>
+      <li>Phase 2: add platform feature docs (passes, hosted games) and re-test.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>Published with the founder's permission. Venue names are left out, and no customer data was used; venue information is public page content.</span>
+    <span>Method follows the error-analysis-first approach: look at the data, name the failure modes, then automate checks and validate the judge against human labels.</span>
+  </footer>
+</div>
+
+</body>
+</html>
