@@ -130,6 +130,9 @@ ul.tight { margin: 0; padding-left: 1.1rem; display: grid; gap: 6px; }
 blockquote { margin: 0; padding: 12px 16px; border-left: 3px solid var(--fail); background: var(--panel); font-size: 0.95rem; }
 blockquote .who { display: block; font-family: var(--mono); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 4px; }
 .callout { border: 1px solid var(--line); border-left: 4px solid var(--shuttle); background: var(--panel); padding: 14px 16px; border-radius: 4px; font-size: 0.95rem; }
+.shot { margin: 0; display: grid; gap: 8px; }
+.shot img { display: block; width: 100%; border: 1px solid var(--line); border-radius: 6px; }
+.shot figcaption { font-size: 0.88rem; }
 footer { padding-top: 28px; border-top: 2px solid var(--line); font-size: 0.85rem; color: var(--muted); display: grid; gap: 6px; }
 
 @media (max-width: 760px) {
@@ -151,7 +154,7 @@ footer { padding-top: 28px; border-top: 2px solid var(--line); font-size: 0.85re
     <span class="eyebrow">KheloMore · AI product management · evaluation case study</span>
     <h1>Venue Assistant Eval</h1>
     <p class="lede col">I built an AI assistant that answers booking questions on KheloMore venue pages, then built the evaluation that decided whether it was ready for a launch trial. The eval cut critical failures in my review from 6 of 49 test conversations to zero, showed that some failures came from the source data rather than the model, and changed which model we chose.</p>
-    <div class="meta"><span>Platform: KheloMore, an Indian sports-venue booking platform with 2,000+ venues</span><span>Role: product owner and domain reviewer</span><span>Models: Claude Haiku 4.5, Claude Sonnet 5.5, Claude Opus 5.5 (judge)</span><span>Status: pre-launch</span></div>
+    <div class="meta"><span>Platform: KheloMore, an Indian sports-venue booking platform with 2,000+ venues</span><span>Role: product owner, hands-on. I wrote the PRD, the assistant and judge prompts and the code checks, built the review app, and labelled every conversation.</span><span>Models: Claude Haiku 4.5, Claude Sonnet 5.5, Claude Opus 5.5 (judge)</span><span>Status: pre-launch</span></div>
 
     <div class="scoreboard" role="group" aria-label="Critical failures before and after">
       <div class="side before"><span class="label">v1 · first version</span><span class="score">6<span class="muted" style="font-size:.45em"> / 49</span></span><span class="sub">conversations with a critical failure</span></div>
@@ -293,12 +296,12 @@ footer { padding-top: 28px; border-top: 2px solid var(--line); font-size: 0.85re
     <div class="head"><span class="eyebrow">Trust</span><h2>How far to trust these numbers</h2></div>
     <div class="two">
       <div class="card"><h3>What's solid</h3><ul class="tight">
-        <li>Critical-failure counts come from a domain expert reading every conversation, with one written standard.</li>
+        <li>The pass/fail standard was written down before re-review and applied the same way to every version. The critical-failure counts are what one reviewer caught; see the caveat opposite.</li>
         <li>Code checks are exact. Each was unit-tested, and three bugs found in them were fixed before reporting.</li>
         <li>Every version ran on identical scenarios.</li>
       </ul></div>
       <div class="card k"><h3>What's directional</h3><ul class="tight">
-        <li><strong>Judge agreement.</strong> I measured two rates against my reply-level labels. True positive rate (TPR): of replies I marked as fine, the share the judge also passed. True negative rate (TNR): of replies I marked as containing an unsupported claim, the share the judge caught. Development set: TPR 91%, TNR 100%. Held-out test set: TPR 72%, TNR 80%. I didn't re-label the test set after seeing the judge's answers, so that gap stays in the record.</li>
+        <li><strong>Judge agreement</strong> (positive class = pass, the error-analysis convention). I measured two rates against my reply-level labels. True positive rate (TPR): of replies I marked as fine, the share the judge also passed. True negative rate (TNR): of replies I marked as containing an unsupported claim, the share the judge caught. Development set: TPR 91%, TNR 100%. Held-out test set: TPR 72%, TNR 80%. I didn't re-label the test set after seeing the judge's answers, so that gap stays in the record.</li>
         <li><strong>My review probably undercounts.</strong> Most of the judge's test-set disagreements were invented claims my own labels had missed. The same reviewer produced the 0/49, so it means zero critical failures I caught. As a cross-check, I re-read the one v2.1 judge flag that looked potentially critical (suggesting a large group book more than one slot at a venue with a 4-player limit). It's the correct answer for that venue, so the count stays at zero.</li>
         <li>49 scenarios across 5 venues finds failure modes; it doesn't give precise rates.</li>
         <li>One reviewer. A second annotator would let us measure agreement.</li>
@@ -310,21 +313,43 @@ footer { padding-top: 28px; border-top: 2px solid var(--line); font-size: 0.85re
   <section>
     <div class="head"><span class="eyebrow">After launch</span><h2>How success will be measured</h2></div>
     <div class="col stack">
-      <p>The eval answers "is it safe to try?". Whether it's worth keeping is a business question, answered by an A/B test: show the assistant on a random half of venue-page sessions, hide it on the other half, run for 2–4 weeks, and compare.</p>
+      <p>The eval answers "is it safe to try?". Whether it's worth keeping is a business question, answered by an A/B test: randomise users (so one person always sees the same version) into assistant shown or hidden on venue pages, and compare the two arms.</p>
+    </div>
+    <div class="callout col"><strong>The catch is dilution.</strong> Only some visitors will open the assistant. If 5% of sessions open it and openers convert 20% more often, conversion across all sessions rises only about 1%. At a 10% baseline that needs roughly 1.4 million sessions per arm to detect, so a test sized for a "5% lift" would likely report no difference even if the assistant works. The plan is built around that.</div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Analysis</th><th>Comparison</th><th>How to read it</th></tr></thead>
+        <tbody>
+          <tr><td><strong>1. All sessions</strong> (intent to treat)</td><td>Treatment arm vs control arm, every venue-page session</td><td><span class="pill good">primary, causal</span> Valid by design. The target is set from the open rate: expected lift ≈ open rate × lift among openers.</td></tr>
+          <tr><td><strong>2. Intent sessions</strong> (triggered)</td><td>Sessions in both arms that scroll to the cancellation or terms section: a sign of a booking doubt, logged the same way in both arms</td><td><span class="pill good">decision metric</span> Concentrates the effect where it can occur, so it needs far fewer sessions. Causal as long as the assistant doesn't change who triggers; checked by comparing trigger rates across arms.</td></tr>
+          <tr><td><strong>3. Openers</strong></td><td>Treatment sessions that opened the assistant vs control intent sessions</td><td><span class="pill est">descriptive</span> Shows the size of the effect on users, but openers choose themselves, so it isn't causal.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="col stack">
+      <p><strong>Sizing the test.</strong> Before launch, a one-week pilot measures three numbers: daily venue-page sessions, the open rate, and the share of intent sessions. Those set the test length from this table (two-sided α = 0.05, 80% power, 10% baseline conversion, an illustrative figure until measured):</p>
     </div>
     <div class="tablewrap">
       <table>
-        <thead><tr><th>Metric</th><th>Hypothesis</th><th>Role</th></tr></thead>
+        <thead><tr><th>Sessions per arm</th><th class="n">25,000</th><th class="n">50,000</th><th class="n">100,000</th><th class="n">250,000</th><th class="n">500,000</th></tr></thead>
+        <tbody><tr><td>Smallest detectable relative lift</td><td class="n">7.5%</td><td class="n">5.3%</td><td class="n">3.8%</td><td class="n">2.4%</td><td class="n">1.7%</td></tr></tbody>
+      </table>
+    </div>
+    <div class="col stack">
+      <p>Illustration with assumed numbers: if a third of intent sessions open the assistant and openers convert 20% more often, the intent-segment lift is about 6.6%, detectable with about 32,000 intent sessions per arm. Across all sessions at a 5% open rate, the same effect is about 1%, which needs about 1.4 million per arm. The pilot replaces these assumptions with real numbers.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Other metrics</th><th>Comparison</th><th>Role</th></tr></thead>
         <tbody>
-          <tr><td>Booking conversion of venue-page sessions</td><td>Higher with the assistant shown. Target set from the current baseline; for example, a 5% relative lift</td><td><span class="pill good">primary</span></td></tr>
-          <tr><td>Support tickets about booking policy (cancellation, refund, reschedule)</td><td>Fewer per 1,000 bookings</td><td><span class="pill good">secondary</span></td></tr>
-          <tr><td>Venue-page drop-off without a booking</td><td>Lower for sessions that open the assistant</td><td><span class="pill good">secondary</span></td></tr>
-          <tr><td>Thumbs-down rate; weekly human review of sampled chats using this eval</td><td>No critical failures; thumbs-down under an agreed threshold</td><td><span class="pill bad">guardrail</span></td></tr>
+          <tr><td>Support tickets about booking policy, per 1,000 bookings</td><td>Treatment arm vs control arm</td><td><span class="pill good">secondary</span></td></tr>
+          <tr><td>Venue-page drop-off without a booking</td><td>Treatment arm vs control arm (not openers vs non-openers, who differ to begin with)</td><td><span class="pill good">secondary</span></td></tr>
+          <tr><td>Critical failures in a weekly sampled review using this eval; thumbs-down rate</td><td>Treatment arm</td><td><span class="pill bad">guardrail</span></td></tr>
           <tr><td>Cost per conversation and response time</td><td>Within the modelled range above</td><td><span class="pill bad">guardrail</span></td></tr>
         </tbody>
       </table>
     </div>
-    <p class="col"><strong>Decision rule:</strong> expand if conversion holds or improves and every guardrail holds; switch off (one flag) if any guardrail breaks.</p>
+    <p class="col"><strong>Decision rule:</strong> expand if the intent-session conversion lift is positive and significant, all-sessions conversion doesn't fall, and every guardrail holds. Switch off (one flag) if any guardrail breaks.</p>
   </section>
 
   <section>
@@ -335,6 +360,21 @@ footer { padding-top: 28px; border-top: 2px solid var(--line); font-size: 0.85re
       <li>Grow the labelled set from real conversations and add a judge for the next most common failure mode.</li>
       <li>Phase 2: add platform feature docs (passes, hosted games) and re-test.</li>
     </ul>
+  </section>
+
+  <section id="evidence">
+    <div class="head"><span class="eyebrow">Evidence</span><h2>The working files</h2></div>
+    <p class="col">Public copies with venue names replaced by Venue A–E and contact details removed. The code repository itself stays private.</p>
+    <ul class="tight col">
+      <li><a href="https://github.com/tussahr/Khelomore-Evals-Case-Study/blob/main/evidence/prd.md">Requirements (PRD)</a>: behaviour rules, scope, data findings and the decision log</li>
+      <li><a href="https://github.com/tussahr/Khelomore-Evals-Case-Study/blob/main/evidence/transcripts.md">Before/after transcripts</a>: the same scenarios in v1, Haiku v2 and the final version</li>
+      <li><a href="https://github.com/tussahr/Khelomore-Evals-Case-Study/blob/main/evidence/judge-prompt.md">LLM judge prompt</a>: definitions, few-shot examples and output format</li>
+      <li><a href="https://github.com/tussahr/Khelomore-Evals-Case-Study/blob/main/evidence/assistant-prompt-v2.2.md">Final assistant prompt</a> (v2.2)</li>
+    </ul>
+    <figure class="shot">
+      <img src="evidence/review-app.jpg" alt="Review app: a conversation marked Fail, with the reviewer's note and an agent suggestion in the margin" loading="lazy">
+      <figcaption class="muted">The review app I built for error analysis: pass/fail per conversation, highlighted notes in the margin, and agent suggestions (purple) to accept or dismiss.</figcaption>
+    </figure>
   </section>
 
   <footer>
