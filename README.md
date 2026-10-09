@@ -2,6 +2,6 @@
 
 An AI product management case study: building and evaluating an AI assistant that answers booking questions on KheloMore venue pages.
 
-**Read it:** https://tussahr.github.io/khelomore-case-study/
+**Read it:** https://tussahr.github.io/Khelomore-Evals-Case-Study/
 
 Author: Tushar Kumar. Published with the founder's permission. Venue names and customer data are not included; the project code is kept in a private repository.
