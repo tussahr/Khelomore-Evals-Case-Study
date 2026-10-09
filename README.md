@@ -4,4 +4,4 @@ An AI product management case study: building and evaluating an AI assistant tha
 
 **Read it:** https://tussahr.github.io/Khelomore-Evals-Case-Study/
 
-Author: Tushar Kumar. Published with the founder's permission. Venue names and customer data are not included; the project code is kept in a private repository.
+Author: Tushar Kumar. The project code is kept in a private repository.
