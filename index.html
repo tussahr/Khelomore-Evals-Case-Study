@@ -286,7 +286,7 @@ footer { padding-top: 28px; border-top: 2px solid var(--line); font-size: 0.85re
         <thead><tr><th>Conversations per day</th><th class="n">100</th><th class="n">400</th><th class="n">1,000</th><th class="n">2,000</th></tr></thead>
         <tbody>
           <tr><td>Monthly, measured cost per conversation</td><td class="n">~$43</td><td class="n">~$170</td><td class="n">~$430</td><td class="n">~$860</td></tr>
-          <tr><td>Monthly, with stored suggested answers (estimate)</td><td class="n">~$25</td><td class="n">~$85–100</td><td class="n">~$215–250</td><td class="n">~$430–500</td></tr>
+          <tr><td>Monthly, with stored suggested answers (estimate)</td><td class="n">~$21–25</td><td class="n">~$85–100</td><td class="n">~$215–250</td><td class="n">~$430–500</td></tr>
         </tbody>
       </table>
     </div>
@@ -296,7 +296,7 @@ footer { padding-top: 28px; border-top: 2px solid var(--line); font-size: 0.85re
     <div class="head"><span class="eyebrow">Trust</span><h2>How far to trust these numbers</h2></div>
     <div class="two">
       <div class="card"><h3>What's solid</h3><ul class="tight">
-        <li>The pass/fail standard was written down before re-review and applied the same way to every version. The critical-failure counts are what one reviewer caught; see the caveat opposite.</li>
+        <li>The pass/fail standard was written down before re-review and applied the same way to every version. The critical-failure counts are what one reviewer caught; see the caveat under "What's directional".</li>
         <li>Code checks are exact. Each was unit-tested, and three bugs found in them were fixed before reporting.</li>
         <li>Every version ran on identical scenarios.</li>
       </ul></div>
@@ -313,43 +313,10 @@ footer { padding-top: 28px; border-top: 2px solid var(--line); font-size: 0.85re
   <section>
     <div class="head"><span class="eyebrow">After launch</span><h2>How success will be measured</h2></div>
     <div class="col stack">
-      <p>The eval answers "is it safe to try?". Whether it's worth keeping is a business question, answered by an A/B test: randomise users (so one person always sees the same version) into assistant shown or hidden on venue pages, and compare the two arms.</p>
+      <p>The eval answers "is it safe to try?". Whether it's worth keeping is a business question, answered by an A/B test: randomise users into assistant shown or hidden on venue pages, and compare the two arms on booking conversion, booking-policy support tickets and venue-page drop-off.</p>
     </div>
-    <div class="callout col"><strong>The catch is dilution.</strong> Only some visitors will open the assistant. If 5% of sessions open it and openers convert 20% more often, conversion across all sessions rises only about 1%. At a 10% baseline that needs roughly 1.4 million sessions per arm to detect, so a test sized for a "5% lift" would likely report no difference even if the assistant works. The plan is built around that.</div>
-    <div class="tablewrap">
-      <table>
-        <thead><tr><th>Analysis</th><th>Comparison</th><th>How to read it</th></tr></thead>
-        <tbody>
-          <tr><td><strong>1. All sessions</strong> (intent to treat)</td><td>Treatment arm vs control arm, every venue-page session</td><td><span class="pill good">primary, causal</span> Valid by design. The target is set from the open rate: expected lift ≈ open rate × lift among openers.</td></tr>
-          <tr><td><strong>2. Intent sessions</strong> (triggered)</td><td>Sessions in both arms that scroll to the cancellation or terms section: a sign of a booking doubt, logged the same way in both arms</td><td><span class="pill good">decision metric</span> Concentrates the effect where it can occur, so it needs far fewer sessions. Causal as long as the assistant doesn't change who triggers; checked by comparing trigger rates across arms.</td></tr>
-          <tr><td><strong>3. Openers</strong></td><td>Treatment sessions that opened the assistant vs control intent sessions</td><td><span class="pill est">descriptive</span> Shows the size of the effect on users, but openers choose themselves, so it isn't causal.</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="col stack">
-      <p><strong>Sizing the test.</strong> Before launch, a one-week pilot measures three numbers: daily venue-page sessions, the open rate, and the share of intent sessions. Those set the test length from this table (two-sided α = 0.05, 80% power, 10% baseline conversion, an illustrative figure until measured):</p>
-    </div>
-    <div class="tablewrap">
-      <table>
-        <thead><tr><th>Sessions per arm</th><th class="n">25,000</th><th class="n">50,000</th><th class="n">100,000</th><th class="n">250,000</th><th class="n">500,000</th></tr></thead>
-        <tbody><tr><td>Smallest detectable relative lift</td><td class="n">7.5%</td><td class="n">5.3%</td><td class="n">3.8%</td><td class="n">2.4%</td><td class="n">1.7%</td></tr></tbody>
-      </table>
-    </div>
-    <div class="col stack">
-      <p>Illustration with assumed numbers: if a third of intent sessions open the assistant and openers convert 20% more often, the intent-segment lift is about 6.6%, detectable with about 32,000 intent sessions per arm. Across all sessions at a 5% open rate, the same effect is about 1%, which needs about 1.4 million per arm. The pilot replaces these assumptions with real numbers.</p>
-    </div>
-    <div class="tablewrap">
-      <table>
-        <thead><tr><th>Other metrics</th><th>Comparison</th><th>Role</th></tr></thead>
-        <tbody>
-          <tr><td>Support tickets about booking policy, per 1,000 bookings</td><td>Treatment arm vs control arm</td><td><span class="pill good">secondary</span></td></tr>
-          <tr><td>Venue-page drop-off without a booking</td><td>Treatment arm vs control arm (not openers vs non-openers, who differ to begin with)</td><td><span class="pill good">secondary</span></td></tr>
-          <tr><td>Critical failures in a weekly sampled review using this eval; thumbs-down rate</td><td>Treatment arm</td><td><span class="pill bad">guardrail</span></td></tr>
-          <tr><td>Cost per conversation and response time</td><td>Within the modelled range above</td><td><span class="pill bad">guardrail</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="col"><strong>Decision rule:</strong> expand if the intent-session conversion lift is positive and significant, all-sessions conversion doesn't fall, and every guardrail holds. Switch off (one flag) if any guardrail breaks.</p>
+    <div class="callout col"><strong>The catch is dilution.</strong> Only some visitors will open the assistant. If 5% of sessions open it and openers convert 20% more often, conversion across all sessions rises only about 1%, which at a 10% baseline needs roughly 1.4 million sessions per arm to detect. A test sized for a "5% lift" would likely report no difference even if the assistant works. So the decision rests on <strong>intent sessions</strong>: users in either arm who scroll to the cancellation or terms section, where a booking doubt is likely and the effect is concentrated.</div>
+    <p class="col"><strong>Decision rule:</strong> expand if conversion in intent sessions rises significantly, all-sessions conversion falls by no more than a pre-set non-inferiority margin (for example 2% relative, fixed after the pilot), trigger rates match across arms, and every guardrail holds: no critical failures in a weekly sampled review using this eval, thumbs-down rate, cost and response time. If trigger rates differ, the all-sessions analysis decides. Switch off (one flag) if any guardrail breaks. Test design and sizing are in the <a href="#appendix">appendix</a>.</p>
   </section>
 
   <section>
@@ -360,6 +327,33 @@ footer { padding-top: 28px; border-top: 2px solid var(--line); font-size: 0.85re
       <li>Grow the labelled set from real conversations and add a judge for the next most common failure mode.</li>
       <li>Phase 2: add platform feature docs (passes, hosted games) and re-test.</li>
     </ul>
+  </section>
+
+  <section id="appendix">
+    <div class="head"><span class="eyebrow">Appendix</span><h2>A/B test design and sizing</h2></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Analysis</th><th>Comparison</th><th>How to read it</th></tr></thead>
+        <tbody>
+          <tr><td><strong>1. All sessions</strong> (intent to treat)</td><td>Treatment arm vs control arm, every venue-page session</td><td><span class="pill good">causal</span> Valid by design but underpowered at realistic open rates, so it's used as a non-inferiority check. Expected lift ≈ open rate × lift among openers.</td></tr>
+          <tr><td><strong>2. Intent sessions</strong> (triggered)</td><td>Sessions in both arms that scroll to the cancellation or terms section, logged the same way in both arms</td><td><span class="pill good">decision metric</span> Causal only if the assistant doesn't change who triggers. It plausibly can (it may answer the doubt before the user scrolls), so trigger rates are compared across arms; if they differ, the all-sessions analysis decides.</td></tr>
+          <tr><td><strong>3. Openers</strong></td><td>Treatment sessions that opened the assistant vs control intent sessions</td><td><span class="pill est">descriptive</span> Shows the size of the effect on users, but openers choose themselves, so it isn't causal.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="tight col">
+      <li><strong>Unit of analysis.</strong> Randomisation is by user, so results are analysed at user level (or with standard errors clustered by user). One user's sessions are correlated; treating them as independent would understate the standard errors.</li>
+      <li><strong>Secondary metrics</strong> (booking-policy tickets per 1,000 bookings, venue-page drop-off) compare treatment arm with control arm, never openers with non-openers, who differ to begin with.</li>
+      <li><strong>Pilot first.</strong> A one-week pilot measures daily venue-page sessions and users, sessions per user, the open rate, the share of intent sessions, and the baseline conversion of intent sessions, which likely differs from the all-sessions baseline. Those set the test length and the non-inferiority margin.</li>
+    </ul>
+    <p class="col">Smallest detectable relative lift by sample size (two-sided α = 0.05, 80% power, 10% baseline conversion as an illustrative figure). These assume independent sessions, so they're optimistic until adjusted for sessions per user from the pilot.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Sessions per arm</th><th class="n">25,000</th><th class="n">50,000</th><th class="n">100,000</th><th class="n">250,000</th><th class="n">500,000</th></tr></thead>
+        <tbody><tr><td>Smallest detectable relative lift</td><td class="n">7.5%</td><td class="n">5.3%</td><td class="n">3.8%</td><td class="n">2.4%</td><td class="n">1.7%</td></tr></tbody>
+      </table>
+    </div>
+    <p class="col">Illustration with assumed numbers: if a third of intent sessions open the assistant and openers convert 20% more often, the intent-segment lift is about 6.7%, detectable with about 32,000 intent sessions per arm. Across all sessions at a 5% open rate, the same effect is about 1%, which needs about 1.4 million per arm. The pilot replaces these assumptions with real numbers.</p>
   </section>
 
   <section id="evidence">
