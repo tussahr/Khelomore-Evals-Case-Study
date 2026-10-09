@@ -316,7 +316,7 @@ footer { padding-top: 28px; border-top: 2px solid var(--line); font-size: 0.85re
       <p>The eval answers "is it safe to try?". Whether it's worth keeping is a business question, answered by an A/B test: randomise users into assistant shown or hidden on venue pages, and compare the two arms on booking conversion, booking-policy support tickets and venue-page drop-off.</p>
     </div>
     <div class="callout col"><strong>The catch is dilution.</strong> Only some visitors will open the assistant. If 5% of sessions open it and openers convert 20% more often, conversion across all sessions rises only about 1%, which at a 10% baseline needs roughly 1.4 million sessions per arm to detect. A test sized for a "5% lift" would likely report no difference even if the assistant works. So the decision rests on <strong>intent sessions</strong>: users in either arm who scroll to the cancellation or terms section, where a booking doubt is likely and the effect is concentrated.</div>
-    <p class="col"><strong>Decision rule:</strong> expand if conversion in intent sessions rises significantly, all-sessions conversion falls by no more than a pre-set non-inferiority margin (for example 2% relative, fixed after the pilot), trigger rates match across arms, and every guardrail holds: no critical failures in a weekly sampled review using this eval, thumbs-down rate, cost and response time. If trigger rates differ, the all-sessions analysis decides. Switch off (one flag) if any guardrail breaks. Test design and sizing are in the <a href="#appendix">appendix</a>.</p>
+    <p class="col"><strong>Decision rule:</strong> expand if conversion in intent sessions rises significantly, all-sessions conversion falls by no more than a pre-set non-inferiority margin, trigger rates match across arms, and every guardrail holds: no critical failures in a weekly sampled review using this eval, thumbs-down rate, cost and response time. The pilot sets the margin from both business tolerance and the traffic the test window can actually reach: a 5% margin needs about 45,000 sessions per arm, a 2% margin about 280,000. If trigger rates differ, the intent result can't be trusted, and the all-sessions test is too small to show a lift; in that case the assistant stays on only if it passes non-inferiority and every guardrail, and the test is re-run with a trigger it can't influence. Switch off (one flag) if any guardrail breaks. Test design and sizing are in the <a href="#appendix">appendix</a>.</p>
   </section>
 
   <section>
@@ -336,7 +336,7 @@ footer { padding-top: 28px; border-top: 2px solid var(--line); font-size: 0.85re
         <thead><tr><th>Analysis</th><th>Comparison</th><th>How to read it</th></tr></thead>
         <tbody>
           <tr><td><strong>1. All sessions</strong> (intent to treat)</td><td>Treatment arm vs control arm, every venue-page session</td><td><span class="pill good">causal</span> Valid by design but underpowered at realistic open rates, so it's used as a non-inferiority check. Expected lift ≈ open rate × lift among openers.</td></tr>
-          <tr><td><strong>2. Intent sessions</strong> (triggered)</td><td>Sessions in both arms that scroll to the cancellation or terms section, logged the same way in both arms</td><td><span class="pill good">decision metric</span> Causal only if the assistant doesn't change who triggers. It plausibly can (it may answer the doubt before the user scrolls), so trigger rates are compared across arms; if they differ, the all-sessions analysis decides.</td></tr>
+          <tr><td><strong>2. Intent sessions</strong> (triggered)</td><td>Sessions in both arms that scroll to the cancellation or terms section, logged the same way in both arms</td><td><span class="pill good">decision metric</span> Causal only if the assistant doesn't change who triggers. It plausibly can (it may answer the doubt before the user scrolls), so trigger rates are compared across arms. If they differ, the fallback is non-inferiority plus guardrails, and a re-test with a trigger the assistant can't affect: the moment the assistant's entry point would scroll into view, logged in both arms.</td></tr>
           <tr><td><strong>3. Openers</strong></td><td>Treatment sessions that opened the assistant vs control intent sessions</td><td><span class="pill est">descriptive</span> Shows the size of the effect on users, but openers choose themselves, so it isn't causal.</td></tr>
         </tbody>
       </table>
@@ -351,6 +351,13 @@ footer { padding-top: 28px; border-top: 2px solid var(--line); font-size: 0.85re
       <table>
         <thead><tr><th>Sessions per arm</th><th class="n">25,000</th><th class="n">50,000</th><th class="n">100,000</th><th class="n">250,000</th><th class="n">500,000</th></tr></thead>
         <tbody><tr><td>Smallest detectable relative lift</td><td class="n">7.5%</td><td class="n">5.3%</td><td class="n">3.8%</td><td class="n">2.4%</td><td class="n">1.7%</td></tr></tbody>
+      </table>
+    </div>
+    <p class="col">Non-inferiority needs its own sizing (one-sided α = 0.05, 80% power, same 10% baseline, no true difference). Tighter margins need far more traffic than the intent-session test, so the margin is chosen from what the test window can reach:</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Non-inferiority margin (relative)</th><th class="n">2%</th><th class="n">3%</th><th class="n">5%</th><th class="n">10%</th></tr></thead>
+        <tbody><tr><td>Sessions per arm</td><td class="n">~280,000</td><td class="n">~124,000</td><td class="n">~45,000</td><td class="n">~11,000</td></tr></tbody>
       </table>
     </div>
     <p class="col">Illustration with assumed numbers: if a third of intent sessions open the assistant and openers convert 20% more often, the intent-segment lift is about 6.7%, detectable with about 32,000 intent sessions per arm. Across all sessions at a 5% open rate, the same effect is about 1%, which needs about 1.4 million per arm. The pilot replaces these assumptions with real numbers.</p>
